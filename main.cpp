@@ -2,6 +2,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include "fake_ROB.h"
 
 using namespace std;
 
