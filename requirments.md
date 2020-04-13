@@ -16,6 +16,8 @@
 - Dispatch()
 - Fetch()
 - Advance_Cycle()
+- parser
+- printer
 
 # Output
 - Timing information for every instruction as described in 7.3
