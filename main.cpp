@@ -35,8 +35,8 @@ void FakeRetire(fake_ROB<instruction> &);
 void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int);
 void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int &, int &);
 void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list);
-void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list);
-void Advance_Cycle();
+void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N);
+bool Advance_Cycle(ifstream &tracefile , fake_ROB<instruction> &ROB, int &cycles);
 void Print_Instruction(instruction &);
 void Parser (ifstream &, instruction &);
 
@@ -213,4 +213,13 @@ void Print_Instruction(instruction &inst){
 	<< "IS {" << inst.info[2].cycle << "," << inst.info[2].duration << "} "
 	<< "EX {" << inst.info[3].cycle << "," << inst.info[3].duration << "} "
 	<< "WB {" << inst.info[4].cycle << "," << inst.info[4].duration << "}" << endl;
+}
+
+bool Advance_Cycle(ifstream &tracefile , fake_ROB<instruction> &ROB, int &cycles)
+{
+	cycles++;
+	if (ROB.get_size() == 0 && tracefile.eof())
+		return false;
+	else
+		 return true;
 }
