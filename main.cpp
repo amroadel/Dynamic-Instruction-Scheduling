@@ -32,10 +32,10 @@ struct instruction {
 int reg_file[128];
 
 void FakeRetire(fake_ROB<instruction> &);
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int);
+void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int &, int &);
 void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list);
 void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list);
-void Dispatch();
-void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction> dispatch_list, int);
 void Advance_Cycle();
 void Print_Instruction(instruction &);
 void Parser (ifstream &, instruction &);
@@ -147,18 +147,62 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list,
 	}
 }
 
-void Fetch (ifstream &tracefile , fake_ROB<instruction> &, queue<instruction> dispatch_list, int N)
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S)
 {
-    int fetch_bandwidth = 0; //need to know what this is
-    instruction inst; 
-    while(!tracefile.eof())
+     
+    instruction inst;
+    for (int i = 0; i < dispatch_list.size(); i++)
     {
-        if (!(dispatch_list.size() > 2*N) && fetch_bandwidth <= N)
+        inst = *dispatch_list.front();
+        
+        
+        if(issue_list.size() <= S)
         {
-            Parser(tracefile, inst);
-        }
-    }
+            if (inst.state == ID)
+            {
+                dispatch_list.pop();
+                inst.state = IS;
+                //TODO: rename rs and rd
+                if (reg_file[inst.rs1] == -1)
+                    inst.ready1 = true;
+                else
+                    inst.ready1 = false;
 
+                if (reg_file[inst.rs2] == -1)
+                    inst.ready2 = true;
+                else
+                    inst.ready2 = false;
+                
+                reg_file[inst.rd] = inst.tag;
+                issue_list.push(&inst);
+            }
+        }
+        else 
+            inst.info[ID].duration++; 
+
+        
+        if (inst.state == IF)
+        {
+            inst.state = ID; 
+            dispatch_list.pop();
+            dispatch_list.push(&inst);
+        }    
+        
+    }
+}
+
+void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int &tag, int &fetch_bandwidth)
+{
+    instruction inst; 
+    //do the fetch bandwidth comaprison in the main
+    Parser(tracefile, inst);
+    inst.state = IF;
+    inst.tag = tag; 
+    ROB.enque(inst);
+    dispatch_list.push(&inst);
+    fetch_bandwidth++;
+    tag++; 
+    
 }
 
 void Print_Instruction(instruction &inst){
