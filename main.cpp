@@ -162,16 +162,9 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
             {
                 dispatch_list.pop();
                 inst.state = IS;
-                if (reg_file[inst.rs1] == -1)
-                    inst.ready1 = true;
-                else
-                    inst.ready1 = false;
 
-                if (reg_file[inst.rs2] == -1)
-                    inst.ready2 = true;
-                else
-                    inst.ready2 = false;
-
+                inst.ready1= (reg_file[inst.rs1] == -1)? true : false;
+                inst.ready2= (reg_file[inst.rs2] == -1)? true : false;
                 reg_file[inst.rd] = inst.tag;
 
                 issue_list.push(&inst);
