@@ -37,7 +37,7 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list)
 void Dispatch();
 void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction> dispatch_list, int);
 void Advance_Cycle();
-void Printe_Instruction(instruction *);
+void Print_Instruction(instruction &);
 void Parser (ifstream &, instruction &);
 
 int main(int argc, char *argv[])
@@ -65,12 +65,18 @@ int main(int argc, char *argv[])
 void Parser (ifstream &tracefile, instruction &inst)
 {
     string PC, op, rd , rs1, rs2;
-    tracefile>>PC>>op>>rd>>rs1>>rs2;
+    tracefile >> PC >> op >> rd >> rs1 >> rs2;
     inst.PC = stol(PC);
     inst.op = stoi(op);
     inst.rd = stoi(rd);
     inst.rs1 = stoi(rs1);
     inst.rs2 = stoi(rs2);
+	inst.ready1 = (inst.rs1 == -1) ? true : false;
+	inst.ready2 = (inst.rs2 == -1) ? true : false;
+	for (int i = 0; i < 5; i++) {
+		inst.info[i].cycle = 0;
+		inst.info[i].duration = 0;
+	}
 }
 
 void FakeRetire(fake_ROB<instruction> &ROB)
@@ -104,7 +110,8 @@ void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_lis
 				|| (temp->op == 1 && temp->info[temp->state].duration == 2)
 				|| (temp->op == 2 && temp->info[temp->state].duration == 5)) {
 				temp->state = WB;
-				reg_file[temp->rd] = -1;
+				if (temp->rd != -1)
+					reg_file[temp->rd] = -1;
 			} else {
 				temp->info[temp->state].duration++;
 				execute_list.push(temp);
@@ -117,8 +124,8 @@ void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_lis
 	for (int i = 0; i < issue_list.size(); i++) {
 		instruction *temp = issue_list.front();
 		issue_list.pop();
-		temp->ready1 = reg_file[temp->rs1] == -1;
-		temp->ready2 = reg_file[temp->rs2] == -1;
+		temp->ready1 = (temp->ready1) ? true : reg_file[temp->rs1] == -1;
+		temp->ready2 = (temp->ready2) ? true : reg_file[temp->rs2] == -1;
 		issue_list.push(temp);
 	}
 }
@@ -152,4 +159,13 @@ void Fetch (ifstream &tracefile , fake_ROB<instruction> &, queue<instruction> di
         }
     }
 
+}
+
+void Print_Instruction(instruction &inst){
+	cout << inst.tag << " fu{" << inst.op << "} src{" << inst.rs1 << "," << inst.rs2 << "} dst{" << inst.rd << "} "
+	<< "IF {" << inst.info[0].cycle << "," << inst.info[0].duration << "} "
+	<< "ID {" << inst.info[1].cycle << "," << inst.info[1].duration << "} "
+	<< "IS {" << inst.info[2].cycle << "," << inst.info[2].duration << "} "
+	<< "EX {" << inst.info[3].cycle << "," << inst.info[3].duration << "} "
+	<< "WB {" << inst.info[4].cycle << "," << inst.info[4].duration << "}" << endl;
 }
