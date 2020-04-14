@@ -32,7 +32,7 @@ struct instruction {
 int reg_file[128];
 
 void FakeRetire(fake_ROB<instruction> &);
-void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int);
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S);
 void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int &, int &);
 void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list);
 void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N);
@@ -57,6 +57,22 @@ int main(int argc, char *argv[])
 		cerr << "Cannot open file" << endl;
 		return 1;
 	}
+
+	queue<instruction*> dispatch_list;
+	queue<instruction*> issue_list;
+	queue<instruction*> execute_list;
+	fake_ROB<instruction> fifo(1024);
+	int tag = 0;
+	int fetch_bandwidth = 0;
+	int cycles = 0;
+	do
+	{
+		FakeRetire(fifo);
+		Dispatch(dispatch_list,issue_list, S);
+		Fetch(tracefile, fifo, dispatch_list, tag, fetch_bandwidth);
+		Execute(execute_list, issue_list);
+		Issue(issue_list, execute_list, N);
+	} while (Advance_Cycle(tracefile , fifo, cycles));
 
 	return 0;
 }
@@ -92,7 +108,7 @@ void FakeRetire(fake_ROB<instruction> &ROB)
         if (ROB.array[ROB.front].state == WB)
         {
             inst = ROB.deque();
-            //printinng function here  
+            Print_Instruction(inst);
         }
         else return;
         
