@@ -47,7 +47,7 @@ T  fake_ROB<T>::deque()
     } 
     T output = array[front];
     array[front]= -1;
-    if (rear = fornt) front = rear = -1;
+    if (rear = front) front = rear = -1;
     else if (front = size -1) front = 0; 
     else front++; 
     return output;
@@ -76,7 +76,7 @@ void fake_ROB<T>::display ()
     }
     else 
     {
-        for (int i = front  i < size ; i++)
+        for (int i = front;  i < size ; i++)
             cout<<array[i];
         for (int i = 0; i <= rear; i++) 
             cout<<array[i];
