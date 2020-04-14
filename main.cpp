@@ -23,6 +23,7 @@ struct instruction {
 	int op;
 	int rd;
 	int rs1, rs2;
+	bool ready1, ready2;
 	int tag;
 	states state;
 	state_info info[5];
@@ -31,10 +32,10 @@ struct instruction {
 int reg_file[128];
 
 void FakeRetire(fake_ROB<instruction> &);
-void Execute();
-void Issue();
 void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int);
 void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int &, int &);
+void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list);
+void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list);
 void Advance_Cycle();
 void Printe_Instruction(instruction *);
 void Parser (ifstream &, instruction &);
@@ -91,6 +92,52 @@ void FakeRetire(fake_ROB<instruction> &ROB)
         
     } while (ROB.get_size() != 0);
     
+}
+
+void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list)
+{
+	for (int i = 0; i < execute_list.size(); i++) {
+		instruction *temp = execute_list.front();
+		execute_list.pop();
+		if (temp->state == EX) {
+			if ((temp->op == 0 && temp->info[temp->state].duration == 1)
+				|| (temp->op == 1 && temp->info[temp->state].duration == 2)
+				|| (temp->op == 2 && temp->info[temp->state].duration == 5)) {
+				temp->state = WB;
+				reg_file[temp->rd] = -1;
+			} else {
+				temp->info[temp->state].duration++;
+				execute_list.push(temp);
+			}
+		} else {
+			execute_list.push(temp);
+		}
+	}
+	
+	for (int i = 0; i < issue_list.size(); i++) {
+		instruction *temp = issue_list.front();
+		issue_list.pop();
+		temp->ready1 = reg_file[temp->rs1] == -1;
+		temp->ready2 = reg_file[temp->rs2] == -1;
+		issue_list.push(temp);
+	}
+}
+
+void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N)
+{
+	int issued = 0;
+	for (int i = 0; i < issue_list.size(); i++) {
+		instruction *temp = issue_list.front();
+		issue_list.pop();
+		if (temp->ready1 && temp->ready2) {
+			temp->state = EX;
+			execute_list.push(temp);
+			if(N = issued++)
+				break;
+		} else {
+			issue_list.push(temp);
+		}
+	}
 }
 
 void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S)
