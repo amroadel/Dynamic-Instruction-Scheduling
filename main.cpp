@@ -6,12 +6,37 @@
 
 using namespace std;
 
+typedef enum {
+	IF, // Fetch
+	ID, // Dispatch
+	IS, // Issue
+	EX, // Excute
+	WB  // Writeback
+} states;
+
+struct state_info {
+	int cycle;
+	int duration;
+};
 struct instruction {
 	long int PC;
 	int op;
 	int rd;
 	int rs1, rs2;
+	int tag;
+	states state;
+	state_info info[5];
 };
+
+int reg_file[128];
+
+void FakeRetire();
+void Execute();
+void Issue();
+void Dispatch();
+void Fetch();
+void Advance_Cycle();
+void Printe_Instruction(instruction *);
 
 int main(int argc, char *argv[])
 {
