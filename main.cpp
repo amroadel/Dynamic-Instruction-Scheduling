@@ -162,7 +162,6 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
             {
                 dispatch_list.pop();
                 inst.state = IS;
-                //TODO: rename rs and rd
                 if (reg_file[inst.rs1] == -1)
                     inst.ready1 = true;
                 else
@@ -172,8 +171,9 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
                     inst.ready2 = true;
                 else
                     inst.ready2 = false;
-                
+
                 reg_file[inst.rd] = inst.tag;
+
                 issue_list.push(&inst);
             }
         }
@@ -184,6 +184,7 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
         if (inst.state == IF)
         {
             inst.state = ID; 
+            inst.info[IF].duration= 1;
             dispatch_list.pop();
             dispatch_list.push(&inst);
         }    
