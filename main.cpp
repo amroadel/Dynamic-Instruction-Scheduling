@@ -6,19 +6,39 @@
 #include "fake_ROB.h"
 using namespace std;
 
+typedef enum {
+	IF, // Fetch
+	ID, // Dispatch
+	IS, // Issue
+	EX, // Excute
+	WB  // Writeback
+} states;
+
+struct state_info {
+	int cycle;
+	int duration;
+};
 struct instruction {
 	long int PC;
 	int op;
 	int rd;
 	int rs1, rs2;
-    string state;
+	int tag;
+	states state;
+	state_info info[5];
 };
 
-queue<instruction> dispatch_list;
+int reg_file[128];
 
-void parser (ifstream & , instruction &);
 void FakeRetire(fake_ROB<instruction> &);
-void Fetch (ifstream & , fake_ROB<instruction> &, queue<instruction> dispatch_list, int );
+void Execute();
+void Issue();
+void Dispatch();
+void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction> dispatch_list, int);
+void Advance_Cycle();
+void Printe_Instruction(instruction *);
+void Parser (ifstream &, instruction &);
+
 int main(int argc, char *argv[])
 {
 	if (argc != 4) {
@@ -41,7 +61,7 @@ int main(int argc, char *argv[])
 }
 
 //read instruction from the trace 
-void parser (ifstream &tracefile, instruction &inst)
+void Parser (ifstream &tracefile, instruction &inst)
 {
     string PC, op, rd , rs1, rs2;
     tracefile>>PC>>op>>rd>>rs1>>rs2;
@@ -62,7 +82,7 @@ void FakeRetire(fake_ROB<instruction> &ROB)
     instruction inst;
     do
     {
-        if (ROB.array[ROB.front].state == "WB")
+        if (ROB.array[ROB.front].state == WB)
         {
             inst = ROB.deque();
             //printinng function here  
@@ -81,7 +101,7 @@ void Fetch (ifstream &tracefile , fake_ROB<instruction> &, queue<instruction> di
     {
         if (!(dispatch_list.size() > 2*N) && fetch_bandwidth <= N)
         {
-            parser(tracefile, inst);
+            Parser(tracefile, inst);
         }
     }
 
