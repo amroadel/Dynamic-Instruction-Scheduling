@@ -6,10 +6,10 @@ class fake_ROB
 private:
     /* data */
     int size;
-    T *array;
-    int rear, front; 
+     
 public:
-
+    T *array;
+    int rear, front;
     fake_ROB(int s);
     void enque (T inst);
     T  deque();
