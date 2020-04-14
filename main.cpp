@@ -33,8 +33,8 @@ int reg_file[128];
 void FakeRetire(fake_ROB<instruction> &);
 void Execute();
 void Issue();
-void Dispatch();
-void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction> dispatch_list, int);
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int);
+void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int &, int &);
 void Advance_Cycle();
 void Printe_Instruction(instruction *);
 void Parser (ifstream &, instruction &);
@@ -93,16 +93,49 @@ void FakeRetire(fake_ROB<instruction> &ROB)
     
 }
 
-void Fetch (ifstream &tracefile , fake_ROB<instruction> &, queue<instruction> dispatch_list, int N)
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S)
 {
-    int fetch_bandwidth = 0; //need to know what this is
-    instruction inst; 
-    while(!tracefile.eof())
+     
+    instruction inst;
+    for (int i = 0; i < dispatch_list.size(); i++)
     {
-        if (!(dispatch_list.size() > 2*N) && fetch_bandwidth <= N)
+        inst = *dispatch_list.front();
+        
+        
+        if(issue_list.size() <= S)
         {
-            Parser(tracefile, inst);
+            if (inst.state == ID)
+            {
+                dispatch_list.pop();
+                inst.state = IS;
+                //TODO: rename rs and rd
+                issue_list.push(&inst);
+            }
         }
-    }
+        else 
+            inst.info[ID].duration++; 
 
+        
+        if (inst.state == IF)
+        {
+            inst.state = ID; 
+            dispatch_list.pop();
+            dispatch_list.push(&inst);
+        }    
+        
+    }
+}
+
+void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int &tag, int &fetch_bandwidth)
+{
+    instruction inst; 
+    //do the fetch bandwidth comaprison in the main
+    Parser(tracefile, inst);
+    inst.state = IF;
+    inst.tag = tag; 
+    ROB.enque(inst);
+    dispatch_list.push(&inst);
+    fetch_bandwidth++;
+    tag++; 
+    
 }
