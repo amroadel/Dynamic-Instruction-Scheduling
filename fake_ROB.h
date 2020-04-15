@@ -11,6 +11,7 @@ private:
 public:
     T *array;
     int rear, front;
+    fake_ROB();
     fake_ROB(int s);
     void enque (T inst);
     T  deque();

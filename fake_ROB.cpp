@@ -1,6 +1,15 @@
 #include "fake_ROB.h"
 
 template <class T>
+fake_ROB<T>::fake_ROB()
+{   
+    size = 1024;
+    front = -1;
+    rear = -1;
+    array = new T [1024];
+}
+
+template <class T>
 fake_ROB<T>::fake_ROB(int s)
 {   
     size = s;
