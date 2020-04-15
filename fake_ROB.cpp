@@ -40,17 +40,16 @@ void fake_ROB<T>::enque (T inst)
 template <class T>
 T  fake_ROB<T>::deque()
 {
-    if (front == -1) 
+    if (front != -1) 
     {
-        cout<<"\nROB is empty";
-        return;
-    } 
     T output = array[front];
-    array[front]= -1;
-    if (rear = front) front = rear = -1;
-    else if (front = size -1) front = 0; 
+    //array[front]= -1;
+    if (rear == front) front = rear = -1;
+    else if (front == size -1) front = 0; 
     else front++; 
-    return output;
+    return output; 
+    } 
+   cout<<"\nROB is empty";
 }
 
 //size getter
@@ -68,17 +67,17 @@ void fake_ROB<T>::display ()
         cout<<"\nROB is empty";
         return;
     }
-
+    cout<<endl<<"Elements are: ";
     if (rear >= front)
     {
-        for (int i = front ; i <rear; i++)
-            cout<<array[i];
+        for (int i = front ; i <= rear; i++)
+            cout<<array[i]<<" "<<endl;
     }
     else 
     {
         for (int i = front;  i < size ; i++)
-            cout<<array[i];
+            cout<<array[i]<<" "<<endl;
         for (int i = 0; i <= rear; i++) 
-            cout<<array[i];
+            cout<<array[i]<<" "<<endl;
     }
 }
