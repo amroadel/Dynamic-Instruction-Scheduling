@@ -32,8 +32,8 @@ struct instruction {
 int reg_file[128];
 
 void FakeRetire(fake_ROB<instruction> &);
-void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S);
-void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int &, int &);
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int &fetch_bandwidth);
+void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int N, int &tag, int &fetch_bandwidth);
 void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list);
 void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N);
 bool Advance_Cycle(ifstream &tracefile , fake_ROB<instruction> &ROB, int &cycles);
@@ -67,11 +67,12 @@ int main(int argc, char *argv[])
 	int cycles = 0;
 	do
 	{
+		cout << "shit" << endl;
 		FakeRetire(fifo);
-		Dispatch(dispatch_list,issue_list, S);
-		Fetch(tracefile, fifo, dispatch_list, tag, fetch_bandwidth);
 		Execute(execute_list, issue_list);
 		Issue(issue_list, execute_list, N);
+		Dispatch(dispatch_list,issue_list, S, fetch_bandwidth);
+		Fetch(tracefile, fifo, dispatch_list, N, tag, fetch_bandwidth);
 	} while (Advance_Cycle(tracefile , fifo, cycles));
 
 	return 0;
@@ -82,7 +83,7 @@ void Parser (ifstream &tracefile, instruction &inst)
 {
     string PC, op, rd , rs1, rs2;
     tracefile >> PC >> op >> rd >> rs1 >> rs2;
-    inst.PC = stol(PC);
+    inst.PC = stol(PC); // TODO: make it read from hex
     inst.op = stoi(op);
     inst.rd = stoi(rd);
     inst.rs1 = stoi(rs1);
@@ -163,7 +164,7 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list,
 	}
 }
 
-void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S)
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int &fetch_bandwidth)
 {
      
     instruction inst;
@@ -172,22 +173,22 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
         inst = *dispatch_list.front();
         
         
-        if(issue_list.size() <= S)
+		if (inst.state == ID)
         {
-            if (inst.state == ID)
+        	if(issue_list.size() <= S)
             {
                 dispatch_list.pop();
                 inst.state = IS;
 
-                inst.ready1= (reg_file[inst.rs1] == -1)? true : false;
-                inst.ready2= (reg_file[inst.rs2] == -1)? true : false;
+                inst.ready1= (inst.ready1) ? true : (reg_file[inst.rs1] == -1) ? true : false;
+                inst.ready2= (inst.ready2) ? true : (reg_file[inst.rs2] == -1) ? true : false;
                 reg_file[inst.rd] = inst.tag;
 
                 issue_list.push(&inst);
             }
+			else 
+				inst.info[ID].duration++; 
         }
-        else 
-            inst.info[ID].duration++; 
 
         
         if (inst.state == IF)
@@ -196,23 +197,24 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
             inst.info[IF].duration= 1;
             dispatch_list.pop();
             dispatch_list.push(&inst);
+			fetch_bandwidth--;
         }    
         
     }
 }
 
-void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int &tag, int &fetch_bandwidth)
+void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int N, int &tag, int &fetch_bandwidth)
 {
     instruction inst; 
-    //do the fetch bandwidth comaprison in the main
-    Parser(tracefile, inst);
-    inst.state = IF;
-    inst.tag = tag; 
-    ROB.enque(inst);
-    dispatch_list.push(&inst);
-    fetch_bandwidth++;
-    tag++; 
-    
+    while (fetch_bandwidth < N && dispatch_list.size() < 2 * N && !tracefile.eof()) {
+		Parser(tracefile, inst);
+		inst.state = IF;
+		inst.tag = tag; 
+		ROB.enque(inst);
+		dispatch_list.push(&inst);
+		fetch_bandwidth++;
+		tag++; 
+	}
 }
 
 void Print_Instruction(instruction &inst){
