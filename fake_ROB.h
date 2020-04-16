@@ -7,6 +7,7 @@ class fake_ROB
 private:
     /* data */
     int size;
+    int current_size;
      
 public:
     T *array;

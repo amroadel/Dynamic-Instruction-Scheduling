@@ -4,6 +4,7 @@ template <class T>
 fake_ROB<T>::fake_ROB()
 {   
     size = 1024;
+    current_size = 0;
     front = -1;
     rear = -1;
     array = new T [1024];
@@ -13,6 +14,7 @@ template <class T>
 fake_ROB<T>::fake_ROB(int s)
 {   
     size = s;
+    current_size = 0;
     front = -1;
     rear = -1;
     array = new T [s];
@@ -42,7 +44,8 @@ void fake_ROB<T>::enque (T inst)
     { 
         rear++; 
         array[rear] = inst; 
-    } 
+    }
+    current_size++;
 }
 
 //remove instruction from the front
@@ -55,7 +58,8 @@ T  fake_ROB<T>::deque()
     //array[front]= -1;
     if (rear == front) front = rear = -1;
     else if (front == size -1) front = 0; 
-    else front++; 
+    else front++;
+    current_size--;
     return output; 
     } 
    cout<<"\nROB is empty";
@@ -65,7 +69,7 @@ T  fake_ROB<T>::deque()
 template <class T>
 int fake_ROB<T>::get_size ()
 {
-    return size;
+    return current_size;
 }
 
 template <class T>

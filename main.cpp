@@ -67,6 +67,7 @@ int main(int argc, char *argv[])
 	int cycles = 0;
 	do
 	{
+		cout << "shit" << endl;
 		FakeRetire(fifo);
 		Execute(execute_list, issue_list);
 		Issue(issue_list, execute_list, N);
@@ -172,22 +173,22 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
         inst = *dispatch_list.front();
         
         
-        if(issue_list.size() <= S)
+		if (inst.state == ID)
         {
-            if (inst.state == ID)
+        	if(issue_list.size() <= S)
             {
                 dispatch_list.pop();
                 inst.state = IS;
 
-                inst.ready1= (reg_file[inst.rs1] == -1)? true : false;
-                inst.ready2= (reg_file[inst.rs2] == -1)? true : false;
+                inst.ready1= (inst.ready1) ? true : (reg_file[inst.rs1] == -1) ? true : false;
+                inst.ready2= (inst.ready2) ? true : (reg_file[inst.rs2] == -1) ? true : false;
                 reg_file[inst.rd] = inst.tag;
 
                 issue_list.push(&inst);
             }
+			else 
+				inst.info[ID].duration++; 
         }
-        else 
-            inst.info[ID].duration++; 
 
         
         if (inst.state == IF)
