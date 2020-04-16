@@ -65,6 +65,10 @@ int main(int argc, char *argv[])
 	int tag = 0;
 	int fetch_bandwidth = 0;
 	int cycles = 0;
+
+	for (int i = 0; i < 128; i++)
+		reg_file[i] = -1;
+	
 	do
 	{
 		cout << "shit" << endl;
@@ -100,7 +104,7 @@ void FakeRetire(fake_ROB<instruction> &ROB)
 {
     if (ROB.get_size() == 0)
     {
-        cout<< "\nROB is empty";
+        cout<< "ROB is empty" << endl; // This should get removed
         return;
     }
     instruction inst;
@@ -109,6 +113,7 @@ void FakeRetire(fake_ROB<instruction> &ROB)
         if (ROB.array[ROB.front].state == WB)
         {
             inst = ROB.deque();
+			cout << "shit inside FakeRetire" << endl;
             Print_Instruction(inst);
         }
         else return;
@@ -156,7 +161,7 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list,
 		if (temp->ready1 && temp->ready2) {
 			temp->state = EX;
 			execute_list.push(temp);
-			if(N = issued++)
+			if(N == issued++)
 				break;
 		} else {
 			issue_list.push(temp);
@@ -167,36 +172,36 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list,
 void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int &fetch_bandwidth)
 {
      
-    instruction inst;
+    instruction *inst;
     for (int i = 0; i < dispatch_list.size(); i++)
     {
-        inst = *dispatch_list.front();
+        inst = dispatch_list.front();
         
         
-		if (inst.state == ID)
+		if (inst->state == ID)
         {
         	if(issue_list.size() <= S)
             {
                 dispatch_list.pop();
-                inst.state = IS;
+                inst->state = IS;
 
-                inst.ready1= (inst.ready1) ? true : (reg_file[inst.rs1] == -1) ? true : false;
-                inst.ready2= (inst.ready2) ? true : (reg_file[inst.rs2] == -1) ? true : false;
-                reg_file[inst.rd] = inst.tag;
+                inst->ready1= (inst->ready1) ? true : (reg_file[inst->rs1] == -1) ? true : false;
+                inst->ready2= (inst->ready2) ? true : (reg_file[inst->rs2] == -1) ? true : false;
+                reg_file[inst->rd] = inst->tag;
 
-                issue_list.push(&inst);
+                issue_list.push(inst);
             }
 			else 
-				inst.info[ID].duration++; 
+				inst->info[ID].duration++; 
         }
 
         
-        if (inst.state == IF)
+        if (inst->state == IF)
         {
-            inst.state = ID; 
-            inst.info[IF].duration= 1;
+            inst->state = ID; 
+            inst->info[IF].duration= 1;
             dispatch_list.pop();
-            dispatch_list.push(&inst);
+            dispatch_list.push(inst);
 			fetch_bandwidth--;
         }    
         
@@ -205,13 +210,13 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
 
 void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int N, int &tag, int &fetch_bandwidth)
 {
-    instruction inst; 
     while (fetch_bandwidth < N && dispatch_list.size() < 2 * N && !tracefile.eof()) {
+    	instruction inst; 
 		Parser(tracefile, inst);
 		inst.state = IF;
 		inst.tag = tag; 
 		ROB.enque(inst);
-		dispatch_list.push(&inst);
+		dispatch_list.push(&ROB.array[ROB.rear]);
 		fetch_bandwidth++;
 		tag++; 
 	}
