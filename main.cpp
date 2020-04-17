@@ -70,9 +70,7 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < 128; i++)
 		reg_file[i] = -1;
 	
-	do
-	{
-		//cout << cycles << " shit" << endl; // TODO: This should get removed
+	do {
 		FakeRetire(fifo);
 		Execute(execute_list, issue_list, cycles);
 		Issue(issue_list, execute_list, N, cycles);
@@ -94,7 +92,7 @@ void Parser (ifstream &tracefile, instruction &inst)
     tracefile >> PC >> op >> rd >> rs1 >> rs2;
 	if (PC == "")
 		return;
-    inst.PC = stol(PC); // TODO: make it read from hex
+    inst.PC = stol(PC, nullptr, 16);
     inst.op = stoi(op);
     inst.rd = stoi(rd);
     inst.rs1 = stoi(rs1);
@@ -111,24 +109,14 @@ void Parser (ifstream &tracefile, instruction &inst)
 
 void FakeRetire(fake_ROB<instruction> &ROB)
 {
-    if (ROB.get_size() == 0)
-    {
-        //cout<< "ROB is empty" << endl; // TODO: This should get removed
-        return;
-    }
     instruction inst;
-    do
-    {
-        if (ROB.array[ROB.front].state == WB)
-        {
+    while (ROB.get_size() != 0) {
+        if (ROB.array[ROB.front].state == WB) {
             inst = ROB.deque();
-			//cout << "shit inside FakeRetire" << endl; // TODO: This should get removed
             Print_Instruction(inst);
         }
         else return;
-        
-    } while (ROB.get_size() != 0);
-    
+    }
 }
 
 void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list, int cycles)
@@ -162,15 +150,6 @@ void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_lis
 			execute_list.push(temp);
 		}
 	}
-	
-	// num = issue_list.size();
-	// for (int i = 0; i < num; i++) {
-	// 	instruction *temp = issue_list.front();
-	// 	issue_list.pop();
-	// 	temp->ready1 = (temp->ready1) ? true : reg_file[temp->rs1] == -1;
-	// 	temp->ready2 = (temp->ready2) ? true : reg_file[temp->rs2] == -1;
-	// 	issue_list.push(temp);
-	// }
 }
 
 void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N, int cycles)
@@ -190,26 +169,19 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list,
 			temp->info[IS].duration++;
 			issue_list.push(temp);
 		}
-		// if(issued == N + 1)
-		// 	break;
 	}
 }
 
 void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int cycles, int &fetch_bandwidth)
-{
-     
+{ 
     instruction *inst;
 	int num = dispatch_list.size();
-    for (int i = 0; i < num; i++)
-    {
+    for (int i = 0; i < num; i++) {
         inst = dispatch_list.front();
 		dispatch_list.pop();
         
-        
-		if (inst->state == ID)
-        {
-        	if(issue_list.size() < S)
-            {
+		if (inst->state == ID) {
+        	if(issue_list.size() < S) {
                 inst->state = IS;
 				inst->info[IS].cycle = cycles;
 				inst->info[IS].duration = 1;
@@ -227,16 +199,13 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
 			}
         }
 
-        
-        if (inst->state == IF)
-        {
+        if (inst->state == IF) {
             inst->state = ID;
 			inst->info[ID].cycle = cycles;
 			inst->info[ID].duration = 1;
             dispatch_list.push(inst);
 			fetch_bandwidth--;
         }    
-        
     }
 }
 
@@ -259,7 +228,8 @@ void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*
 	}
 }
 
-void Print_Instruction(instruction &inst){
+void Print_Instruction(instruction &inst)
+{
 	cout << inst.tag << " fu{" << inst.op << "} src{" << inst.rs1 << "," << inst.rs2 << "} dst{" << inst.rd << "} "
 	<< "IF{" << inst.info[0].cycle << "," << inst.info[0].duration << "} "
 	<< "ID{" << inst.info[1].cycle << "," << inst.info[1].duration << "} "
