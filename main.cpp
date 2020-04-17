@@ -180,18 +180,18 @@ void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list,
 	for (int i = 0; i < num; i++) {
 		instruction *temp = issue_list.front();
 		issue_list.pop();
-		if (temp->ready1 && temp->ready2) {
+		if (temp->ready1 && temp->ready2 && (issued != N + 1)) {
 			temp->state = EX;
 			temp->info[EX].cycle = cycles;
 			temp->info[EX].duration = 1;
 			execute_list.push(temp);
+			issued++;
 		} else {
 			temp->info[IS].duration++;
 			issue_list.push(temp);
 		}
-		issued++;
-		if(issued == N + 1)
-			break;
+		// if(issued == N + 1)
+		// 	break;
 	}
 }
 

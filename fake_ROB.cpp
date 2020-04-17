@@ -26,7 +26,7 @@ void fake_ROB<T>::enque (T inst)
 {
     if ((rear == size-1 && front == 0) || (rear == (front-1)%(size-1))) 
     { 
-        cout<<"\nFull ROB"; 
+        //cout<<"\nFull ROB"; TODO: remove this but Amro ... fuck you
         return; 
     } 
     else if (front == -1) //Insert First instruction
@@ -62,7 +62,7 @@ T  fake_ROB<T>::deque()
     current_size--;
     return output; 
     } 
-   cout<<"\nROB is empty";
+   //cout<<"\nROB is empty"; TDOD: and this
 }
 
 //size getter
