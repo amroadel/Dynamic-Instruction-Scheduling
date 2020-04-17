@@ -80,6 +80,10 @@ int main(int argc, char *argv[])
 		Fetch(tracefile, fifo, dispatch_list, N, cycles, tag, fetch_bandwidth);
 	} while (Advance_Cycle(tracefile , fifo, cycles));
 
+	float IPC = (float)tag / (cycles - 1);
+	cout << "number of instructions = " << tag << endl
+		 << "number of cycles       = " << cycles - 1 << endl
+		 << "IPC                    = " << IPC << endl;
 	return 0;
 }
 
@@ -239,9 +243,11 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
 void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int N, int cycles, int &tag, int &fetch_bandwidth)
 {
 	int fetched = 0;
-    while (fetched < N && dispatch_list.size() <= 2 * N && !tracefile.eof()) {
+    while (fetched < N && dispatch_list.size() < 2 * N && !tracefile.eof()) {
     	instruction inst; 
 		Parser(tracefile, inst);
+		if (tracefile.eof())
+			break;
 		inst.state = IF;
 		inst.info[IF].cycle = cycles;
 		inst.info[IF].duration = 1;
