@@ -199,13 +199,13 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
     for (int i = 0; i < num; i++)
     {
         inst = dispatch_list.front();
+		dispatch_list.pop();
         
         
 		if (inst->state == ID)
         {
         	if(issue_list.size() < S)
             {
-                dispatch_list.pop();
                 inst->state = IS;
 				inst->info[IS].cycle = cycles;
 				inst->info[IS].duration = 1;
@@ -217,9 +217,10 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
                 	reg_file[inst->rd] = inst->tag;
 
                 issue_list.push(inst);
-            }
-			else 
-				inst->info[ID].duration++; 
+            } else {
+				inst->info[ID].duration++;
+            	dispatch_list.push(inst);
+			}
         }
 
         
@@ -228,7 +229,6 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
             inst->state = ID;
 			inst->info[ID].cycle = cycles;
 			inst->info[ID].duration = 1;
-            dispatch_list.pop();
             dispatch_list.push(inst);
 			fetch_bandwidth--;
         }    
