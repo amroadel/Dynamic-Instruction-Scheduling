@@ -23,6 +23,7 @@ struct instruction {
 	int op;
 	int rd;
 	int rs1, rs2;
+	int tag1, tag2;
 	bool ready1, ready2;
 	int tag;
 	states state;
@@ -94,6 +95,8 @@ void Parser (ifstream &tracefile, instruction &inst)
     inst.rd = stoi(rd);
     inst.rs1 = stoi(rs1);
     inst.rs2 = stoi(rs2);
+	inst.tag1 = -1;
+	inst.tag2 = -1;
 	inst.ready1 = (inst.rs1 == -1) ? true : false;
 	inst.ready2 = (inst.rs2 == -1) ? true : false;
 	for (int i = 0; i < 5; i++) {
@@ -136,22 +139,34 @@ void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_lis
 			temp->state = WB;
 			temp->info[WB].cycle = cycles;
 			temp->info[WB].duration = 1;
-			if (temp->rd != -1)
-				reg_file[temp->rd] = -1;
+			if (temp->rd != -1) {
+				int num2 = issue_list.size();
+				for (int j = 0; j < num2; j++) {
+					instruction *temp2 = issue_list.front();
+					issue_list.pop();
+					temp2->ready1 = (temp2->ready1) ? true : (temp->tag == temp2->tag1) ? true : false;
+					temp2->ready2 = (temp2->ready2) ? true : (temp->tag == temp2->tag2) ? true : false;
+					temp2->tag1 = (temp2->ready1) ? -1 : (temp->tag == temp2->tag1) ? -1 : temp2->tag1;
+					temp2->tag2 = (temp2->ready2) ? -1 : (temp->tag == temp2->tag2) ? -1 : temp2->tag2;
+					issue_list.push(temp2);
+				}
+				if (reg_file[temp->rd] == temp->tag)
+					reg_file[temp->rd] = -1;
+			}
 		} else {
 			temp->info[EX].duration++;
 			execute_list.push(temp);
 		}
 	}
 	
-	num = issue_list.size();
-	for (int i = 0; i < num; i++) {
-		instruction *temp = issue_list.front();
-		issue_list.pop();
-		temp->ready1 = (temp->ready1) ? true : reg_file[temp->rs1] == -1;
-		temp->ready2 = (temp->ready2) ? true : reg_file[temp->rs2] == -1;
-		issue_list.push(temp);
-	}
+	// num = issue_list.size();
+	// for (int i = 0; i < num; i++) {
+	// 	instruction *temp = issue_list.front();
+	// 	issue_list.pop();
+	// 	temp->ready1 = (temp->ready1) ? true : reg_file[temp->rs1] == -1;
+	// 	temp->ready2 = (temp->ready2) ? true : reg_file[temp->rs2] == -1;
+	// 	issue_list.push(temp);
+	// }
 }
 
 void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N, int cycles)
@@ -194,9 +209,12 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
                 inst->state = IS;
 				inst->info[IS].cycle = cycles;
 				inst->info[IS].duration = 1;
+				inst->tag1= (inst->ready1) ? -1 : (reg_file[inst->rs1] == -1) ? -1 : reg_file[inst->rs1];
+				inst->tag2= (inst->ready2) ? -1 : (reg_file[inst->rs2] == -1) ? -1 : reg_file[inst->rs2];
                 inst->ready1= (inst->ready1) ? true : (reg_file[inst->rs1] == -1) ? true : false;
                 inst->ready2= (inst->ready2) ? true : (reg_file[inst->rs2] == -1) ? true : false;
-                reg_file[inst->rd] = inst->tag;
+				if (inst->rd != -1)
+                	reg_file[inst->rd] = inst->tag;
 
                 issue_list.push(inst);
             }
