@@ -32,10 +32,10 @@ struct instruction {
 int reg_file[128];
 
 void FakeRetire(fake_ROB<instruction> &);
-void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int &fetch_bandwidth);
-void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int N, int &tag, int &fetch_bandwidth);
-void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list);
-void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N);
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int cycles, int &fetch_bandwidth);
+void Fetch(ifstream & , fake_ROB<instruction> &, queue<instruction*> &dispatch_list, int N, int cycles, int &tag, int &fetch_bandwidth);
+void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list, int cycles);
+void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N, int cycles);
 bool Advance_Cycle(ifstream &tracefile , fake_ROB<instruction> &ROB, int &cycles);
 void Print_Instruction(instruction &);
 void Parser (ifstream &, instruction &);
@@ -71,12 +71,12 @@ int main(int argc, char *argv[])
 	
 	do
 	{
-		cout << "shit" << endl;
+		//cout << cycles << " shit" << endl; // TODO: This should get removed
 		FakeRetire(fifo);
-		Execute(execute_list, issue_list);
-		Issue(issue_list, execute_list, N);
-		Dispatch(dispatch_list,issue_list, S, fetch_bandwidth);
-		Fetch(tracefile, fifo, dispatch_list, N, tag, fetch_bandwidth);
+		Execute(execute_list, issue_list, cycles);
+		Issue(issue_list, execute_list, N, cycles);
+		Dispatch(dispatch_list,issue_list, S, cycles, fetch_bandwidth);
+		Fetch(tracefile, fifo, dispatch_list, N, cycles, tag, fetch_bandwidth);
 	} while (Advance_Cycle(tracefile , fifo, cycles));
 
 	return 0;
@@ -87,6 +87,8 @@ void Parser (ifstream &tracefile, instruction &inst)
 {
     string PC, op, rd , rs1, rs2;
     tracefile >> PC >> op >> rd >> rs1 >> rs2;
+	if (PC == "")
+		return;
     inst.PC = stol(PC); // TODO: make it read from hex
     inst.op = stoi(op);
     inst.rd = stoi(rd);
@@ -104,7 +106,7 @@ void FakeRetire(fake_ROB<instruction> &ROB)
 {
     if (ROB.get_size() == 0)
     {
-        cout<< "ROB is empty" << endl; // This should get removed
+        //cout<< "ROB is empty" << endl; // TODO: This should get removed
         return;
     }
     instruction inst;
@@ -113,7 +115,7 @@ void FakeRetire(fake_ROB<instruction> &ROB)
         if (ROB.array[ROB.front].state == WB)
         {
             inst = ROB.deque();
-			cout << "shit inside FakeRetire" << endl;
+			//cout << "shit inside FakeRetire" << endl; // TODO: This should get removed
             Print_Instruction(inst);
         }
         else return;
@@ -122,28 +124,28 @@ void FakeRetire(fake_ROB<instruction> &ROB)
     
 }
 
-void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list)
+void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_list, int cycles)
 {
-	for (int i = 0; i < execute_list.size(); i++) {
+	int num = execute_list.size();
+	for (int i = 0; i < num; i++) {
 		instruction *temp = execute_list.front();
 		execute_list.pop();
-		if (temp->state == EX) {
-			if ((temp->op == 0 && temp->info[temp->state].duration == 1)
-				|| (temp->op == 1 && temp->info[temp->state].duration == 2)
-				|| (temp->op == 2 && temp->info[temp->state].duration == 5)) {
-				temp->state = WB;
-				if (temp->rd != -1)
-					reg_file[temp->rd] = -1;
-			} else {
-				temp->info[temp->state].duration++;
-				execute_list.push(temp);
-			}
+		if ((temp->op == 0 && temp->info[temp->state].duration == 1)
+			|| (temp->op == 1 && temp->info[temp->state].duration == 2)
+			|| (temp->op == 2 && temp->info[temp->state].duration == 5)) {
+			temp->state = WB;
+			temp->info[WB].cycle = cycles;
+			temp->info[WB].duration = 1;
+			if (temp->rd != -1)
+				reg_file[temp->rd] = -1;
 		} else {
+			temp->info[EX].duration++;
 			execute_list.push(temp);
 		}
 	}
 	
-	for (int i = 0; i < issue_list.size(); i++) {
+	num = issue_list.size();
+	for (int i = 0; i < num; i++) {
 		instruction *temp = issue_list.front();
 		issue_list.pop();
 		temp->ready1 = (temp->ready1) ? true : reg_file[temp->rs1] == -1;
@@ -152,39 +154,46 @@ void Execute(queue<instruction *> &execute_list, queue<instruction *> &issue_lis
 	}
 }
 
-void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N)
+void Issue(queue<instruction *> &issue_list, queue<instruction *> &execute_list, int N, int cycles)
 {
 	int issued = 0;
-	for (int i = 0; i < issue_list.size(); i++) {
+	int num = issue_list.size();
+	for (int i = 0; i < num; i++) {
 		instruction *temp = issue_list.front();
 		issue_list.pop();
 		if (temp->ready1 && temp->ready2) {
 			temp->state = EX;
+			temp->info[EX].cycle = cycles;
+			temp->info[EX].duration = 1;
 			execute_list.push(temp);
-			if(N == issued++)
-				break;
 		} else {
+			temp->info[IS].duration++;
 			issue_list.push(temp);
 		}
+		issued++;
+		if(issued == N + 1)
+			break;
 	}
 }
 
-void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int &fetch_bandwidth)
+void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list, int S, int cycles, int &fetch_bandwidth)
 {
      
     instruction *inst;
-    for (int i = 0; i < dispatch_list.size(); i++)
+	int num = dispatch_list.size();
+    for (int i = 0; i < num; i++)
     {
         inst = dispatch_list.front();
         
         
 		if (inst->state == ID)
         {
-        	if(issue_list.size() <= S)
+        	if(issue_list.size() < S)
             {
                 dispatch_list.pop();
                 inst->state = IS;
-
+				inst->info[IS].cycle = cycles;
+				inst->info[IS].duration = 1;
                 inst->ready1= (inst->ready1) ? true : (reg_file[inst->rs1] == -1) ? true : false;
                 inst->ready2= (inst->ready2) ? true : (reg_file[inst->rs2] == -1) ? true : false;
                 reg_file[inst->rd] = inst->tag;
@@ -198,8 +207,9 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
         
         if (inst->state == IF)
         {
-            inst->state = ID; 
-            inst->info[IF].duration= 1;
+            inst->state = ID;
+			inst->info[ID].cycle = cycles;
+			inst->info[ID].duration = 1;
             dispatch_list.pop();
             dispatch_list.push(inst);
 			fetch_bandwidth--;
@@ -208,27 +218,30 @@ void Dispatch(queue<instruction*> &dispatch_list,queue<instruction*> &issue_list
     }
 }
 
-void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int N, int &tag, int &fetch_bandwidth)
+void Fetch (ifstream &tracefile , fake_ROB<instruction> &ROB, queue<instruction*> &dispatch_list, int N, int cycles, int &tag, int &fetch_bandwidth)
 {
-    while (fetch_bandwidth < N && dispatch_list.size() < 2 * N && !tracefile.eof()) {
+	int fetched = 0;
+    while (fetched < N && dispatch_list.size() <= 2 * N && !tracefile.eof()) {
     	instruction inst; 
 		Parser(tracefile, inst);
 		inst.state = IF;
+		inst.info[IF].cycle = cycles;
+		inst.info[IF].duration = 1;
 		inst.tag = tag; 
 		ROB.enque(inst);
 		dispatch_list.push(&ROB.array[ROB.rear]);
-		fetch_bandwidth++;
+		fetched++;
 		tag++; 
 	}
 }
 
 void Print_Instruction(instruction &inst){
 	cout << inst.tag << " fu{" << inst.op << "} src{" << inst.rs1 << "," << inst.rs2 << "} dst{" << inst.rd << "} "
-	<< "IF {" << inst.info[0].cycle << "," << inst.info[0].duration << "} "
-	<< "ID {" << inst.info[1].cycle << "," << inst.info[1].duration << "} "
-	<< "IS {" << inst.info[2].cycle << "," << inst.info[2].duration << "} "
-	<< "EX {" << inst.info[3].cycle << "," << inst.info[3].duration << "} "
-	<< "WB {" << inst.info[4].cycle << "," << inst.info[4].duration << "}" << endl;
+	<< "IF{" << inst.info[0].cycle << "," << inst.info[0].duration << "} "
+	<< "ID{" << inst.info[1].cycle << "," << inst.info[1].duration << "} "
+	<< "IS{" << inst.info[2].cycle << "," << inst.info[2].duration << "} "
+	<< "EX{" << inst.info[3].cycle << "," << inst.info[3].duration << "} "
+	<< "WB{" << inst.info[4].cycle << "," << inst.info[4].duration << "}" << endl;
 }
 
 bool Advance_Cycle(ifstream &tracefile , fake_ROB<instruction> &ROB, int &cycles)
